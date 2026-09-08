@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Viasat Insights — Fleet Map (GPS Interference Overlay Prototype)</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    /* ── Reset ─────────────────────────────────────────────────────────────── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      color: #212121;
+    }
+
+    /* ── Top Nav (Teal) ─────────────────────────────────────────────────────── */
+    .top-nav {
+      height: 48px;
+      background: #1b7a8c;
+      display: flex;
+      align-items: center;
+      padding: 0 8px 0 6px;
+      flex-shrink: 0;
+      z-index: 3000;
+      gap: 2px;
+    }
+
+    .nav-icon-btn {
+      width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.82);
+      border-radius: 4px; cursor: pointer;
+      transition: background 0.12s;
+    }
+    .nav-icon-btn:hover { background: rgba(255,255,255,0.12); }
+    .nav-icon-btn .material-icons { font-size: 22px; }
+
+    .nav-brand {
+      display: flex; flex-direction: column;
+      margin: 0 2px 0 4px;
+    }
+    .nav-brand-name {
+      font-size: 15px; font-weight: 600; color: #fff;
+      line-height: 1.25; letter-spacing: 0.1px;
+    }
+    .nav-brand-sub {
+      font-size: 10.5px; color: rgba(255,255,255,0.72); font-weight: 400;
+    }
+
+    .nav-spacer { flex: 1; }
+
+    .nav-right { display: flex; align-items: center; gap: 2px; }
+
+    .nav-pill {
+      display: flex; align-items: center; gap: 3px;
+      background: rgba(255,255,255,0.14);
+      border-radius: 4px; padding: 4px 8px;
+      font-size: 13px; color: #fff; cursor: pointer;
+      transition: background 0.12s; margin-right: 6px;
+    }
+    .nav-pill:hover { background: rgba(255,255,255,0.22); }
+    .nav-pill .material-icons { font-size: 15px; }
+
+    .nav-time { font-size: 12.5px; color: rgba(255,255,255,0.82); margin: 0 4px; }
+
+    .nav-avatar {
+      width: 30px; height: 30px;
+      background: rgba(255,255,255,0.18); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; margin-left: 4px;
+    }
+    .nav-avatar .material-icons { font-size: 18px; color: #fff; }
+
+    /* ── Secondary Toolbar ──────────────────────────────────────────────────── */
+    .toolbar {
+      height: 46px;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex; align-items: center;
+      padding: 0 14px; gap: 6px;
+      flex-shrink: 0; z-index: 2000;
+    }
+
+    .tb-title { font-size: 15px; font-weight: 600; color: #212121; }
+    .tb-count { font-size: 15px; color: #757575; margin-right: 2px; }
+    .tb-sep { width: 1px; height: 20px; background: #e0e0e0; }
+    .tb-spacer { flex: 1; }
+
+    .tb-btn {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 9px; border-radius: 4px;
+      font-size: 12.5px; color: #424242;
+      cursor: pointer; border: none; background: none;
+      transition: background 0.1s;
+    }
+    .tb-btn:hover { background: #f5f5f5; }
+    .tb-btn .material-icons { font-size: 16px; color: #757575; }
+
+    .tb-outlined {
+      display: flex; align-items: center; gap: 4px;
+      padding: 4px 11px; border-radius: 4px;
+      font-size: 12.5px; color: #424242;
+      cursor: pointer; border: 1px solid #ddd; background: #fff;
+      transition: background 0.1s;
+    }
+    .tb-outlined:hover { background: #f5f5f5; }
+    .tb-outlined .material-icons { font-size: 16px; color: #757575; }
+
+    /* GPS jamming warning chip */
+    .gps-chip {
+      display: none; align-items: center; gap: 5px;
+      background: #fff3e0; border: 1px solid #ffb300;
+      border-radius: 4px; padding: 4px 10px;
+      font-size: 12px; font-weight: 500; color: #e65100;
+    }
+    .gps-chip.visible { display: flex; }
+    .gps-chip .material-icons { font-size: 15px; }
+
+    /* ── App Body ───────────────────────────────────────────────────────────── */
+    .app-body { flex: 1; display: flex; overflow: hidden; }
+
+    /* ── Left Nav ───────────────────────────────────────────────────────────── */
+    .left-nav {
+      width: 48px;
+      background: #fff; border-right: 1px solid #e0e0e0;
+      display: flex; flex-direction: column;
+      align-items: center; padding: 6px 0; gap: 2px;
+      flex-shrink: 0; z-index: 1000;
+    }
+
+    .lnav-btn {
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 4px; cursor: pointer; color: #9e9e9e;
+      transition: background 0.1s, color 0.1s;
+    }
+    .lnav-btn:hover { background: #f5f5f5; color: #424242; }
+    .lnav-btn.active { color: #1b7a8c; background: #e3f4f7; }
+    .lnav-btn .material-icons { font-size: 20px; }
+    .lnav-spacer { flex: 1; }
+
+    /* ── Map Container ──────────────────────────────────────────────────────── */
+    .map-container { flex: 1; position: relative; overflow: hidden; }
+    #map { position: absolute; inset: 0; }
+
+    /* Leaflet overrides */
+    .leaflet-control-zoom { display: none !important; }
+    .leaflet-control-attribution {
+      font-size: 10px !important;
+      color: #9e9e9e !important;
+      background: rgba(255,255,255,0.75) !important;
+    }
+
+    /* ── Map Right Controls ─────────────────────────────────────────────────── */
+    .mc-wrap {
+      position: absolute; top: 12px; right: 12px;
+      display: flex; flex-direction: column; gap: 3px;
+      z-index: 1000;
+    }
+
+    .mc-btn {
+      width: 32px; height: 32px;
+      background: #fff; border: 1px solid #ddd; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: #616161;
+      transition: background 0.1s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+    .mc-btn:hover { background: #f5f5f5; }
+    .mc-btn.active { border-color: #1b7a8c; color: #1b7a8c; }
+    .mc-btn .material-icons { font-size: 18px; }
+
+    .mc-zoom {
+      display: flex; flex-direction: column;
+      border: 1px solid #ddd; border-radius: 4px; overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+    .mc-zoom-btn {
+      width: 32px; height: 30px;
+      background: #fff; border: none;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 18px; font-weight: 300; color: #616161;
+      transition: background 0.1s;
+    }
+    .mc-zoom-btn:hover { background: #f5f5f5; }
+    .mc-zoom-btn + .mc-zoom-btn { border-top: 1px solid #eee; }
+    .mc-gap { height: 5px; }
+
+    /* ── Layers Panel (floating card) ──────────────────────────────────────── */
+    .layers-panel {
+      position: absolute;
+      top: 12px;
+      right: 52px;
+      width: 285px;
+      max-height: calc(100% - 80px);
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      display: none; flex-direction: column;
+      z-index: 900;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.14);
+      overflow: hidden;
+    }
+    .layers-panel.open { display: flex; }
+
+    .lp-head {
+      height: 46px; border-bottom: 1px solid #e0e0e0;
+      display: flex; align-items: center;
+      padding: 0 14px; gap: 8px; flex-shrink: 0;
+    }
+    .lp-head-title { font-size: 13px; font-weight: 600; flex: 1; }
+    .lp-close-btn {
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; border-radius: 4px; color: #9e9e9e;
+    }
+    .lp-close-btn:hover { background: #f5f5f5; color: #424242; }
+    .lp-close-btn .material-icons { font-size: 18px; }
+
+    .lp-body { flex: 1; overflow-y: auto; }
+    .lp-body::-webkit-scrollbar { width: 4px; }
+    .lp-body::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 2px; }
+
+    .lp-section { border-bottom: 1px solid #f0f0f0; padding: 10px 14px; }
+
+    .lp-section.gps-highlight {
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .lp-section-label {
+      font-size: 10.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.7px;
+      color: #9e9e9e; margin-bottom: 6px;
+    }
+
+    .lp-section.gps-highlight .lp-section-label { color: #9e9e9e; }
+
+    .lp-row {
+      display: flex; align-items: center;
+      justify-content: space-between; padding: 5px 0;
+    }
+
+    .lp-row-label {
+      font-size: 12.5px; color: #212121;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .lp-row-label .material-icons { font-size: 16px; color: #bdbdbd; }
+    .lp-row-label.gps { color: #e65100; }
+    .lp-row-label.gps .material-icons { color: #ff9800; }
+
+    /* Toggle switch */
+    .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider {
+      position: absolute; cursor: pointer; inset: 0;
+      background: #bdbdbd; border-radius: 20px; transition: background 0.18s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 14px; height: 14px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%;
+      transition: transform 0.18s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    input:checked + .toggle-slider { background: #1b7a8c; }
+    input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+    /* Opacity slider */
+    .lp-slider-wrap { padding: 2px 0 6px; }
+    .lp-slider-head {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: #bdbdbd; margin-bottom: 4px;
+    }
+    input[type=range].lp-range {
+      width: 100%; height: 4px; appearance: none;
+      background: #e0e0e0; border-radius: 4px; outline: none; cursor: pointer;
+    }
+    input[type=range].lp-range::-webkit-slider-thumb {
+      appearance: none; width: 14px; height: 14px; border-radius: 50%;
+      background: #1b7a8c; cursor: pointer;
+    }
+
+    /* Gradient legend */
+    .lp-grad {
+      height: 6px; border-radius: 3px;
+      background: linear-gradient(to right,
+        rgba(76,175,80,0.85) 0%,
+        rgba(255,193,7,0.9) 38%,
+        rgba(255,87,34,0.9) 65%,
+        rgba(244,67,54,0.95) 100%
+      );
+      margin: 6px 0 3px;
+    }
+    .lp-grad-labels {
+      display: flex; justify-content: space-between;
+      font-size: 9.5px; color: #bdbdbd;
+    }
+
+    .lp-footer {
+      padding: 10px 14px; border-top: 1px solid #e0e0e0; flex-shrink: 0;
+    }
+    .lp-hide-all {
+      width: 100%; height: 30px;
+      border: 1px solid #ddd; border-radius: 4px; background: #fff;
+      font-size: 11.5px; color: #757575; cursor: pointer; letter-spacing: 0.5px;
+    }
+    .lp-hide-all:hover { background: #f5f5f5; }
+
+    /* ── Status Bar ─────────────────────────────────────────────────────────── */
+    .status-bar {
+      position: absolute; bottom: 22px; right: 50px;
+      background: #fff; border: 1px solid #ddd; border-radius: 4px;
+      display: flex; align-items: center;
+      z-index: 1000; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      overflow: hidden; font-size: 12px;
+    }
+
+    .sb-arrow {
+      width: 28px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      background: #fafafa; border-right: 1px solid #eee; cursor: pointer;
+      color: #9e9e9e;
+    }
+    .sb-arrow .material-icons { font-size: 14px; }
+
+    .sb-items { display: flex; align-items: center; }
+
+    .sb-item {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 10px; border-right: 1px solid #f0f0f0;
+    }
+    .sb-item:last-child { border-right: none; }
+    .sb-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .sb-n { font-weight: 600; color: #212121; }
+    .sb-l { color: #9e9e9e; }
+
+    /* ── Aircraft markers ───────────────────────────────────────────────────── */
+    .ac-wrap { position: relative; cursor: pointer; }
+
+    .ac-bubble {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid rgba(255,255,255,0.85);
+      box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+      transition: transform 0.12s;
+    }
+    .ac-bubble:hover { transform: scale(1.12); }
+    .ac-bubble .material-icons { font-size: 15px; color: #fff; }
+
+    .ac-count {
+      position: absolute; top: -4px; right: -5px;
+      background: #424242; color: #fff;
+      border-radius: 10px; font-size: 10px; font-weight: 600;
+      padding: 1px 5px; min-width: 17px; text-align: center;
+      border: 1.5px solid #fff; line-height: 1.4;
+    }
+
+    /* Leaflet tooltip for aircraft */
+    .leaflet-tooltip {
+      background: #fff !important;
+      background-color: #fff !important;
+      border: 1px solid #e0e0e0 !important;
+      border-radius: 4px !important;
+      padding: 0 !important;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 12px !important;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.13) !important;
+      color: #212121 !important;
+      opacity: 1 !important;
+      overflow: hidden;
+      min-width: 220px;
+    }
+    .leaflet-tooltip::before { display: none !important; }
+
+    /* ── Aircraft popover ────────────────────────────────────────────────── */
+    .acp-header {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 13px 7px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 12px; font-weight: 600; color: #212121;
+    }
+    .acp-tail-row {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 13px; border-bottom: 1px solid #f0f0f0;
+      font-size: 12px;
+    }
+    .acp-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .acp-tail { font-weight: 600; color: #212121; }
+    .acp-sep  { color: #bdbdbd; }
+    .acp-flight { color: #424242; }
+    .acp-status-txt { flex: 1; text-align: right; color: #757575; font-size: 11.5px; }
+    .acp-fly-icon { font-size: 14px !important; color: #bdbdbd; }
+    .acp-info-block { padding: 5px 0 4px; }
+    .acp-info-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 3px 13px; font-size: 11.5px;
+    }
+    .acp-info-icon { font-size: 13px !important; color: #bdbdbd; }
+    .acp-info-label { flex: 1; color: #757575; }
+    .acp-info-val { color: #212121; font-weight: 500; }
+    .acp-jam-footer {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 13px; background: #fff3e0;
+      border-top: 1px solid #ffe0b2; border-radius: 0 0 4px 4px;
+      font-size: 11.5px; font-weight: 500; color: #e65100;
+    }
+    .acp-jam-icon { font-size: 15px !important; color: #ff9800; }
+
+    /* ── GPS Interference Side Sheet ────────────────────────────────────────── */
+    .side-sheet {
+      width: 0;
+      background: #fff;
+      border-left: 1px solid #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+      transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1100;
+      box-shadow: -2px 0 8px rgba(0,0,0,0.06);
+    }
+    .side-sheet.open { width: 292px; }
+
+    .ss-header {
+      height: 48px;
+      display: flex; align-items: center;
+      padding: 0 8px 0 16px;
+      border-bottom: 1px solid #e0e0e0;
+      flex-shrink: 0;
+    }
+    .ss-title {
+      font-size: 11.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.9px;
+      color: #212121; flex: 1;
+      white-space: nowrap;
+    }
+    .ss-close {
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      border: none; background: none; cursor: pointer;
+      border-radius: 4px; color: #9e9e9e; flex-shrink: 0;
+    }
+    .ss-close:hover { background: #f5f5f5; color: #424242; }
+    .ss-close .material-icons { font-size: 18px; }
+
+    /* Alert severity banner */
+    .ss-alert {
+      display: flex; align-items: flex-start; gap: 12px;
+      margin: 12px 16px 4px;
+      padding: 10px 12px;
+      border-radius: 4px;
+      font-size: 12.5px; line-height: 1.45;
+      flex-shrink: 0;
+    }
+    .ss-alert.low      { background: #e8f5e9; color: #1b5e20; }
+    .ss-alert.moderate { background: #fff3e0; color: #bf360c; }
+    .ss-alert.high     { background: #fce8e6; color: #b71c1c; }
+    .ss-alert.severe   { background: #fce8e6; color: #7f0000; }
+    .ss-status-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 1px; width: 16px; height: 16px; }
+    .ss-status-icon svg { display: block; width: 16px; height: 16px; }
+    .ss-alert-strong { font-weight: 600; }
+
+    /* Sections */
+    .ss-body { flex: 1; overflow-y: auto; padding-bottom: 16px; }
+    .ss-body::-webkit-scrollbar { width: 4px; }
+    .ss-body::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 2px; }
+
+    .ss-section { padding: 16px 16px 0; }
+
+    .ss-section-head {
+      display: flex; align-items: center;
+      margin-bottom: 10px;
+    }
+    .ss-section-label {
+      font-size: 10.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.7px;
+      color: #9e9e9e; flex: 1;
+    }
+    .ss-beam-count {
+      font-size: 11px; font-weight: 600;
+      color: #757575; background: #f0f0f0;
+      border-radius: 10px; padding: 1px 7px;
+    }
+
+    /* Coordinate rows */
+    .ss-coord-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid #f5f5f5;
+      min-height: 38px;
+    }
+    .ss-coord-row:last-of-type { border-bottom: none; }
+    .ss-coord-icon { font-size: 16px !important; color: #9e9e9e; flex-shrink: 0; }
+    .ss-coord-label { font-size: 12px; color: #757575; flex: 1; }
+    .ss-coord-val { font-size: 13px; color: #212121; font-weight: 500; white-space: nowrap; }
+    .ss-copy-btn {
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      border: none; background: none; cursor: pointer;
+      border-radius: 4px; color: #bdbdbd; flex-shrink: 0;
+    }
+    .ss-copy-btn:hover { background: #f5f5f5; color: #616161; }
+    .ss-copy-btn .material-icons { font-size: 14px; }
+    .ss-copy-btn.copied { color: #4caf50 !important; }
+
+    /* Beam badges */
+    .ss-beam-grid {
+      display: flex; flex-wrap: wrap; gap: 5px;
+    }
+    .ss-beam-badge {
+      display: inline-flex; align-items: center;
+      background: #f0f7f8; color: #1b7a8c;
+      border: 1px solid #cce6ea;
+      border-radius: 4px; padding: 3px 8px;
+      font-size: 11.5px; font-weight: 500;
+      cursor: pointer; text-decoration: none;
+      white-space: nowrap;
+    }
+    .ss-beam-badge:hover { background: #ddf0f4; }
+
+    /* "Pin" hint text */
+    .ss-pin-hint {
+      font-size: 10.5px; color: #bdbdbd;
+      text-align: center;
+      padding: 8px 16px 0;
+      flex-shrink: 0;
+    }
+    .ss-pin-hint.pinned { color: #1b7a8c; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Top Navigation ───────────────────────────────────────────────────── -->
+  <nav class="top-nav">
+    <div class="nav-icon-btn"><span class="material-icons">apps</span></div>
+    <div class="nav-brand">
+      <span class="nav-brand-name">Viasat Insights</span>
+      <span class="nav-brand-sub">Business Aviation</span>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="nav-right">
+      <div class="nav-pill">All <span class="material-icons">arrow_drop_down</span></div>
+      <div class="nav-time">15:34:45 UTC</div>
+      <div class="nav-icon-btn"><span class="material-icons">warning_amber</span></div>
+      <div class="nav-icon-btn"><span class="material-icons">notifications_none</span></div>
+      <div class="nav-icon-btn"><span class="material-icons">help_outline</span></div>
+      <div class="nav-avatar"><span class="material-icons">person_outline</span></div>
+    </div>
+  </nav>
+
+  <!-- ── Secondary Toolbar ────────────────────────────────────────────────── -->
+  <div class="toolbar">
+    <span class="tb-title">Fleet Map</span>
+    <span class="tb-count">(2305)</span>
+    <div class="tb-sep"></div>
+    <button class="tb-btn"><span class="material-icons">filter_list</span> Filter</button>
+    <div class="tb-spacer"></div>
+    <div class="gps-chip" id="gps-chip">
+      <span class="material-icons">gps_off</span>
+      <span id="gps-chip-text">GPS jamming detected</span>
+    </div>
+    <button class="tb-outlined"><span class="material-icons">visibility</span> View as Customer</button>
+    <button class="tb-outlined"><span class="material-icons">share</span> Share</button>
+  </div>
+
+  <!-- ── App Body ─────────────────────────────────────────────────────────── -->
+  <div class="app-body">
+
+    <!-- Left Nav -->
+    <aside class="left-nav">
+      <div class="lnav-btn"><span class="material-icons">dashboard</span></div>
+      <div class="lnav-btn active"><span class="material-icons">map</span></div>
+      <div class="lnav-btn"><span class="material-icons">view_list</span></div>
+      <div class="lnav-btn"><span class="material-icons">query_stats</span></div>
+      <div class="lnav-btn"><span class="material-icons">bookmark_border</span></div>
+      <div class="lnav-spacer"></div>
+      <div class="lnav-btn"><span class="material-icons">chevron_right</span></div>
+    </aside>
+
+    <!-- Map -->
+    <div class="map-container">
+      <div id="map"></div>
+
+      <!-- Right map controls -->
+      <div class="mc-wrap">
+        <div class="mc-btn"><span class="material-icons">search</span></div>
+        <div class="mc-gap"></div>
+        <div class="mc-btn active" id="layers-btn" title="Layers">
+          <span class="material-icons">layers</span>
+        </div>
+        <div class="mc-gap"></div>
+        <div class="mc-zoom">
+          <button class="mc-zoom-btn" id="btn-zoom-in">+</button>
+          <button class="mc-zoom-btn" id="btn-zoom-out">−</button>
+        </div>
+        <div class="mc-gap"></div>
+        <div class="mc-btn"><span class="material-icons">my_location</span></div>
+        <div class="mc-gap"></div>
+        <div class="mc-btn"><span class="material-icons">fullscreen</span></div>
+      </div>
+
+      <!-- Layers Panel -->
+      <div class="layers-panel open" id="layers-panel">
+        <div class="lp-head">
+          <span class="lp-head-title">Map Layers</span>
+          <div class="lp-close-btn" id="lp-close">
+            <span class="material-icons">close</span>
+          </div>
+        </div>
+        <div class="lp-body">
+
+          <!-- GPS Interference -->
+          <div class="lp-section gps-highlight">
+            <div class="lp-section-label">GPS Interference <span style="font-size:9px;background:#388e3c;color:#fff;border-radius:3px;padding:1px 5px;margin-left:4px;text-transform:none;font-weight:600">NEW</span></div>
+            <div class="lp-row" style="padding-top:2px">
+              <div class="lp-row-label">
+                <span class="material-icons">gps_off</span>
+                Show overlay
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="overlay-toggle" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="lp-slider-wrap">
+              <div class="lp-slider-head">
+                <span>Opacity</span><span id="opacity-val">70%</span>
+              </div>
+              <input type="range" class="lp-range" id="opacity-slider" min="10" max="100" value="70" step="5">
+            </div>
+            <div class="lp-grad"></div>
+            <div class="lp-grad-labels">
+              <span>Low</span><span>Moderate</span><span>High</span><span>Severe</span>
+            </div>
+          </div>
+
+          <!-- Connected Beams -->
+          <div class="lp-section">
+            <div class="lp-row">
+              <div class="lp-row-label"><span class="material-icons">satellite_alt</span>Connected Beams</div>
+              <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+
+          <!-- JetXP Hybrid -->
+          <div class="lp-section">
+            <div class="lp-section-label" style="display:flex;align-items:center;justify-content:space-between">
+              JETXP HYBRID COVERAGE
+              <span class="material-icons" style="font-size:15px;color:#bdbdbd">expand_less</span>
+            </div>
+            <div class="lp-row">
+              <div class="lp-row-label" style="font-size:12px">JetXP Hybrid Global Coverage</div>
+              <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+
+          <!-- Americas -->
+          <div class="lp-section">
+            <div class="lp-section-label">AMERICAS</div>
+            <div class="lp-row"><div class="lp-row-label" style="font-size:12px">Hylas-4</div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+            <div class="lp-row"><div class="lp-row-label" style="font-size:12px">I5F2 (GX2)</div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+            <div class="lp-row"><div class="lp-row-label" style="font-size:12px">Viasat-3 (F1)</div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+            <div class="lp-row"><div class="lp-row-label" style="font-size:12px">Viasat-3 (F2)</div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+          </div>
+
+          <!-- Asia & Pacific -->
+          <div class="lp-section">
+            <div class="lp-section-label">ASIA &amp; PACIFIC</div>
+            <div class="lp-row"><div class="lp-row-label" style="font-size:12px">I5F3 (GX3)</div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+            <div class="lp-row"><div class="lp-row-label" style="font-size:12px">I6F1 (GX6a)</div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+          </div>
+
+          <!-- EMEA -->
+          <div class="lp-section">
+            <div class="lp-section-label">EUROPE, MIDDLE EAST &amp; AFRICA</div>
+            <div class="lp-row"><div class="lp-row-label" style="font-size:12px">I5F1 (GX1)</div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+            <div class="lp-row"><div class="lp-row-label" style="font-size:12px">I5F4 (GX4)</div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+            <div class="lp-row"><div class="lp-row-label" style="font-size:12px">I5F5 (GX5)</div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+          </div>
+
+          <!-- Europe & South America -->
+          <div class="lp-section">
+            <div class="lp-section-label">EUROPE &amp; SOUTH AMERICA</div>
+            <div class="lp-row"><div class="lp-row-label" style="font-size:12px">Thor-7</div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+          </div>
+
+          <!-- TX Inhibit Zones -->
+          <div class="lp-section">
+            <div class="lp-section-label">TX INHIBIT ZONES</div>
+          </div>
+
+        </div>
+        <div class="lp-footer">
+          <button class="lp-hide-all">HIDE ALL</button>
+        </div>
+      </div>
+
+      <!-- Status bar (bottom right) -->
+      <div class="status-bar">
+        <div class="sb-arrow"><span class="material-icons">chevron_right</span></div>
+        <div class="sb-items">
+          <div class="sb-item"><div class="sb-dot" style="background:#f44336"></div><span class="sb-n">10</span><span class="sb-l">Disconnected</span></div>
+          <div class="sb-item"><div class="sb-dot" style="background:#ff9800"></div><span class="sb-n">2</span><span class="sb-l">Impaired</span></div>
+          <div class="sb-item"><div class="sb-dot" style="background:#4caf50"></div><span class="sb-n">147</span><span class="sb-l">Connected</span></div>
+          <div class="sb-item"><div class="sb-dot" style="background:#9e9e9e"></div><span class="sb-n">2146</span><span class="sb-l">Offline</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GPS Interference Side Sheet ──────────────────────────────────────── -->
+    <div class="side-sheet" id="side-sheet">
+      <div class="ss-header">
+        <span class="ss-title">GPS Interference</span>
+        <button class="ss-close" id="ss-close" title="Close">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <div class="ss-body">
+        <!-- Severity alert -->
+        <div class="ss-alert high" id="ss-alert">
+          <span class="ss-status-icon" id="ss-alert-icon"></span>
+          <span><span class="ss-alert-strong" id="ss-alert-level">High Interference:</span> <span id="ss-alert-msg">Connectivity and GPS accuracy may be degraded.</span></span>
+        </div>
+
+        <!-- Coordinates -->
+        <div class="ss-section">
+          <div class="ss-section-head">
+            <span class="ss-section-label">Coordinates</span>
+          </div>
+          <div class="ss-coord-row">
+            <span class="material-icons ss-coord-icon">location_on</span>
+            <span class="ss-coord-label">Latitude</span>
+            <span class="ss-coord-val" id="ss-lat">—</span>
+            <button class="ss-copy-btn" id="ss-copy-lat" title="Copy latitude">
+              <span class="material-icons">content_copy</span>
+            </button>
+          </div>
+          <div class="ss-coord-row">
+            <span class="material-icons ss-coord-icon" style="opacity:0">location_on</span>
+            <span class="ss-coord-label">Longitude</span>
+            <span class="ss-coord-val" id="ss-lng">—</span>
+            <button class="ss-copy-btn" id="ss-copy-lng" title="Copy longitude">
+              <span class="material-icons">content_copy</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Affected Beams -->
+        <div class="ss-section">
+          <div class="ss-section-head">
+            <span class="ss-section-label">Affected Beams</span>
+            <span class="ss-beam-count" id="ss-beam-count">0</span>
+          </div>
+          <div class="ss-beam-grid" id="ss-beam-grid"></div>
+        </div>
+      </div>
+
+      <!-- Hover/pin hint -->
+      <div class="ss-pin-hint" id="ss-pin-hint">Click map to pin this location</div>
+    </div>
+
+  </div><!-- /.app-body -->
+
+  <script>
+    // ── Map ───────────────────────────────────────────────────────────────────
+    const map = L.map('map', {
+      center: [28, 8],
+      zoom: 3,
+      zoomControl: false,
+      preferCanvas: true
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: 'Map data &copy; <a href="https://openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>',
+      subdomains: 'abcd', maxZoom: 19
+    }).addTo(map);
+
+    document.getElementById('btn-zoom-in').addEventListener('click', () => map.zoomIn());
+    document.getElementById('btn-zoom-out').addEventListener('click', () => map.zoomOut());
+
+    // ── GPS Jamming hotspots ──────────────────────────────────────────────────
+    const HOTSPOTS = [
+      { lat: 45.0, lng: 35.0, r: 7.0, i: 0.93, name: 'Black Sea / Crimea',   beams: ['I5F1 (GX1)', 'I5F4 (GX4)'] },
+      { lat: 47.5, lng: 38.5, r: 5.0, i: 0.87, name: 'Donbas / Sea of Azov', beams: ['I5F1 (GX1)', 'I5F4 (GX4)'] },
+      { lat: 35.5, lng: 33.5, r: 4.5, i: 0.88, name: 'E Mediterranean',       beams: ['I5F1 (GX1)'] },
+      { lat: 31.8, lng: 34.8, r: 3.0, i: 0.91, name: 'Gaza / Israel',         beams: ['I5F1 (GX1)'] },
+      { lat: 33.8, lng: 44.0, r: 5.5, i: 0.76, name: 'Iraq / Syria',          beams: ['I5F1 (GX1)', 'I5F4 (GX4)'] },
+      { lat: 60.2, lng: 28.2, r: 4.0, i: 0.70, name: 'Baltic / SE Finland',   beams: ['Thor-7', 'I5F1 (GX1)'] },
+      { lat: 54.7, lng: 20.5, r: 3.5, i: 0.64, name: 'Kaliningrad',           beams: ['Thor-7', 'I5F1 (GX1)'] },
+      { lat: 56.8, lng: 38.0, r: 4.5, i: 0.48, name: 'Moscow region',         beams: ['I5F5 (GX5)'] },
+    ];
+
+    function getInterference(lat, lng) {
+      let max = 0;
+      for (const h of HOTSPOTS) {
+        const d2 = (lat - h.lat) ** 2 + (lng - h.lng) ** 2;
+        const v = h.i * Math.exp(-d2 / (h.r * h.r));
+        if (v > max) max = v;
+      }
+      return max;
+    }
+
+    function getActiveBeams(lat, lng) {
+      const seen = new Set(), beams = [];
+      for (const h of HOTSPOTS) {
+        const d2 = (lat - h.lat) ** 2 + (lng - h.lng) ** 2;
+        const v = h.i * Math.exp(-d2 / (h.r * h.r));
+        if (v > 0.12) {
+          for (const b of h.beams) {
+            if (!seen.has(b)) { seen.add(b); beams.push(b); }
+          }
+        }
+      }
+      return beams;
+    }
+
+    function levelFor(v) {
+      if (v < 0.15) return null;
+      if (v < 0.35) return { label: 'Low',      cls: 'low',      c: [76, 175, 80],   a: 0.50 };
+      if (v < 0.60) return { label: 'Moderate', cls: 'moderate', c: [255, 152, 0],   a: 0.62 };
+      if (v < 0.78) return { label: 'High',     cls: 'high',     c: [244, 81, 30],   a: 0.70 };
+      return              { label: 'Severe',   cls: 'severe',   c: [244, 67, 54],   a: 0.80 };
+    }
+
+    // ── Canvas hex overlay ────────────────────────────────────────────────────
+    const mapPaneEl = map.getPanes().mapPane;
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'position:absolute;pointer-events:none;z-index:450;';
+    mapPaneEl.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    let overlayVisible = true;
+    let overlayOpacity = 0.70;
+    const HEX_PX = 5;
+
+    let selectedLatLng = null;
+
+    function drawHex(px, py, r, fill, stroke, lineWidth) {
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i - Math.PI / 6;
+        const x = px + r * Math.cos(a);
+        const y = py + r * Math.sin(a);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lineWidth || 0.4;
+      ctx.stroke();
+    }
+
+    function redraw() {
+      const sz = map.getSize();
+      canvas.width = sz.x;
+      canvas.height = sz.y;
+      const t = mapPaneEl.style.transform;
+      const m = t && t.match(/translate3d\((-?[\d.]+)px,\s*(-?[\d.]+)px/);
+      canvas.style.left = (m ? -+m[1] : 0) + 'px';
+      canvas.style.top  = (m ? -+m[2] : 0) + 'px';
+      ctx.clearRect(0, 0, sz.x, sz.y);
+      if (!overlayVisible) return;
+
+      const r = HEX_PX;
+      const hexW = Math.sqrt(3) * r;
+      const rowStep = r * 1.5;
+      const cols = Math.ceil(sz.x / hexW) + 2;
+      const rows = Math.ceil(sz.y / rowStep) + 2;
+
+      for (let row = -1; row <= rows; row++) {
+        for (let col = -1; col <= cols; col++) {
+          const px = col * hexW + (row % 2 !== 0 ? hexW / 2 : 0);
+          const py = row * rowStep;
+          const ll = map.containerPointToLatLng(L.point(px, py));
+          const v = getInterference(ll.lat, ll.lng);
+          const info = levelFor(v);
+          if (!info) continue;
+          const [cr, cg, cb] = info.c;
+          const a = info.a * overlayOpacity;
+          drawHex(px, py, r - 0.8,
+            `rgba(${cr},${cg},${cb},${a})`,
+            `rgba(${cr},${cg},${cb},${a * 0.25})`
+          );
+        }
+      }
+
+      // Draw selected hex highlight
+      if (selectedLatLng) {
+        const pt = map.latLngToContainerPoint(selectedLatLng);
+        drawHex(pt.x, pt.y, r + 1.5, 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0.9)', 1.5);
+      }
+    }
+
+    map.on('moveend zoomend resize', redraw);
+    map.on('move', redraw);
+    redraw();
+
+    // ── Side Sheet ────────────────────────────────────────────────────────────
+    const sideSheet  = document.getElementById('side-sheet');
+    const ssClose    = document.getElementById('ss-close');
+    const ssAlert    = document.getElementById('ss-alert');
+    const ssAlertLvl = document.getElementById('ss-alert-level');
+    const ssAlertMsg = document.getElementById('ss-alert-msg');
+    const ssLat      = document.getElementById('ss-lat');
+    const ssLng      = document.getElementById('ss-lng');
+    const ssBeamCt   = document.getElementById('ss-beam-count');
+    const ssBeamGrid = document.getElementById('ss-beam-grid');
+    const ssPinHint  = document.getElementById('ss-pin-hint');
+
+    const ALERT_MSGS = {
+      low:      'Minor signal degradation possible.',
+      moderate: 'GPS accuracy may be affected.',
+      high:     'Connectivity and GPS accuracy may be degraded.',
+      severe:   'Severe disruption likely. Connectivity may be lost.',
+    };
+    // Figma StatusIcons SVGs (Insights Components — Legacy, node 4340:2)
+    const STATUS_SVGS = {
+      low:      `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 18C13.9706 18 18 13.9706 18 9C18 4.02944 13.9706 0 9 0C4.02944 0 0 4.02944 0 9C0 13.9706 4.02944 18 9 18Z" fill="#20A465"/></svg>`,
+      moderate: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.2222 0H1.77778C0.795938 0 0 0.795938 0 1.77778V14.2222C0 15.2041 0.795938 16 1.77778 16H14.2222C15.2041 16 16 15.2041 16 14.2222V1.77778C16 0.795938 15.2041 0 14.2222 0Z" fill="#FFA625"/></svg>`,
+      high:     `<svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.5573 0.885913C10.3991 0.616458 10.1719 0.392793 9.89859 0.237315C9.62528 0.0818362 9.31541 0 9 0C8.68459 0 8.37472 0.0818362 8.10141 0.237315C7.8281 0.392793 7.60094 0.616458 7.44268 0.885913L0.241204 13.3328C0.083267 13.603 8.11538e-05 13.9094 5.93487e-08 14.2214C-8.10351e-05 14.5334 0.0829454 14.8399 0.240742 15.1101C0.398539 15.3804 0.625552 15.6049 0.898986 15.7611C1.17242 15.9173 1.48265 15.9997 1.79852 16H16.2015C16.5174 15.9997 16.8276 15.9173 17.101 15.7611C17.3744 15.6049 17.6015 15.3804 17.7593 15.1101C17.9171 14.8399 18.0001 14.5334 18 14.2214C17.9999 13.9094 17.9167 13.603 17.7588 13.3328L10.5573 0.885913Z" fill="#EC7424"/></svg>`,
+      severe:   `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.63596 7.46577C0.43435 7.66717 0.274412 7.90634 0.165289 8.16959C0.0561668 8.43285 0 8.71503 0 9C0 9.28497 0.0561668 9.56715 0.165289 9.83041C0.274412 10.0937 0.43435 10.3328 0.63596 10.5342L7.46577 17.364C7.66717 17.5656 7.90634 17.7256 8.16959 17.8347C8.43285 17.9438 8.71502 18 9 18C9.28497 18 9.56715 17.9438 9.83041 17.8347C10.0937 17.7256 10.3328 17.5656 10.5342 17.364L17.364 10.5342C17.5657 10.3328 17.7256 10.0937 17.8347 9.83041C17.9438 9.56715 18 9.28497 18 9C18 8.71503 17.9438 8.43285 17.8347 8.16959C17.7256 7.90634 17.5657 7.66717 17.364 7.46577L10.5342 0.63596C10.3328 0.43435 10.0937 0.274412 9.83041 0.165289C9.56715 0.0561668 9.28497 0 9 0C8.71502 0 8.43285 0.0561668 8.16959 0.165289C7.90634 0.274412 7.66717 0.43435 7.46577 0.63596L0.63596 7.46577Z" fill="#D43C33"/></svg>`,
+    };
+
+    function fmtLat(v) {
+      return `${Math.abs(v).toFixed(4)}° ${v >= 0 ? 'N' : 'S'}`;
+    }
+    function fmtLng(v) {
+      return `${Math.abs(v).toFixed(4)}° ${v >= 0 ? 'E' : 'W'}`;
+    }
+
+    function populateSheet(latlng, info) {
+      const beams = getActiveBeams(latlng.lat, latlng.lng);
+      ssAlert.className = `ss-alert ${info.cls}`;
+      document.getElementById('ss-alert-icon').innerHTML = STATUS_SVGS[info.cls];
+      ssAlertLvl.textContent = `${info.label} Interference:`;
+      ssAlertMsg.textContent = ALERT_MSGS[info.cls];
+      ssLat.textContent = fmtLat(latlng.lat);
+      ssLng.textContent = fmtLng(latlng.lng);
+      ssBeamCt.textContent = beams.length;
+      ssBeamGrid.innerHTML = beams.map(b =>
+        `<a class="ss-beam-badge" href="#">${b}</a>`
+      ).join('');
+    }
+
+    function openSheet(latlng, info) {
+      populateSheet(latlng, info);
+      sideSheet.classList.add('open');
+      ssPinHint.textContent = 'Click another hex to update · click × to close';
+    }
+
+    function closeSheet() {
+      sideSheet.classList.remove('open');
+      selectedLatLng = null;
+      redraw();
+    }
+
+    ssClose.addEventListener('click', closeSheet);
+
+    // Copy buttons
+    function flashCopy(btn) {
+      btn.classList.add('copied');
+      btn.querySelector('.material-icons').textContent = 'check';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.querySelector('.material-icons').textContent = 'content_copy';
+      }, 1500);
+    }
+
+    document.getElementById('ss-copy-lat').addEventListener('click', () => {
+      navigator.clipboard.writeText(ssLat.textContent).catch(() => {});
+      flashCopy(document.getElementById('ss-copy-lat'));
+    });
+    document.getElementById('ss-copy-lng').addEventListener('click', () => {
+      navigator.clipboard.writeText(ssLng.textContent).catch(() => {});
+      flashCopy(document.getElementById('ss-copy-lng'));
+    });
+
+    // ── Hex interaction ───────────────────────────────────────────────────────
+    const mapContainer = map.getContainer();
+
+    map.on('mousemove', (e) => {
+      if (!overlayVisible) return;
+      const v = getInterference(e.latlng.lat, e.latlng.lng);
+      mapContainer.style.cursor = levelFor(v) ? 'pointer' : '';
+    });
+
+    map.on('mouseout', () => {
+      mapContainer.style.cursor = '';
+    });
+
+    map.on('click', (e) => {
+      if (!overlayVisible) return;
+      const v = getInterference(e.latlng.lat, e.latlng.lng);
+      const info = levelFor(v);
+      if (info) {
+        selectedLatLng = e.latlng;
+        openSheet(e.latlng, info);
+        redraw();
+      } else {
+        closeSheet();
+      }
+    });
+
+    // ── Aircraft markers ──────────────────────────────────────────────────────
+    const STATUS_COLOR = {
+      connected: '#4caf50', disconnected: '#f44336',
+      impaired: '#ff9800', offline: '#9e9e9e'
+    };
+
+    const TAIL_DATA = {
+      'N521RD': { serial: '0031', band: 'Ka', beam: 'I5F1 (GX1)', from: 'IST', dep: '06:30', to: 'LED', arr: '10:15', rem: '1h 42m' },
+      'TC-CEL': { serial: '0009', band: 'Ka', beam: 'I5F1 (GX1)', from: 'ADB', dep: '09:45', to: 'BEY', arr: '11:20', rem: '0h 31m' },
+      '4X-CLM': { serial: '0017', band: 'Ka', beam: 'I5F1 (GX1)', from: 'TLV', dep: '11:00', to: 'GVA', arr: '14:30', rem: '4h 12m' },
+      'OE-IGA': { serial: '0042', band: 'Ku', beam: 'Thor-7',     from: 'VIE', dep: '09:30', to: 'ZRH', arr: '10:45', rem: '0h 22m' },
+      'XA-VJS': { serial: '0058', band: 'Ka', beam: 'I5F2 (GX2)', from: 'MEX', dep: '07:50', to: 'TEB', arr: '12:45', rem: '1h 28m' },
+    };
+
+    const AIRCRAFT = [
+      { lat: 40.7, lng: -74.0, status: 'connected',    n: 43 },
+      { lat: 33.7, lng: -84.4, status: 'connected',    n: 8  },
+      { lat: 41.9, lng: -87.6, status: 'offline',      n: 63 },
+      { lat: 29.8, lng: -95.4, status: 'disconnected', n: 14 },
+      { lat: 47.4, lng:-122.3, status: 'connected',    n: 4  },
+      { lat: 34.0, lng:-118.2, status: 'offline',      n: 39 },
+      { lat: 25.8, lng: -80.3, status: 'connected',    n: 9  },
+      { lat: 19.4, lng: -99.1, status: 'impaired',     n: 1, tail:'XA-VJS' },
+      { lat: 51.5, lng:  -0.1, status: 'connected',    n: 6  },
+      { lat: 48.8, lng:   2.3, status: 'connected',    n: 5  },
+      { lat: 52.5, lng:  13.4, status: 'offline',      n: 11 },
+      { lat: 48.1, lng:  16.6, status: 'offline',      n: 3  },
+      { lat: 40.4, lng:  -3.7, status: 'connected',    n: 5  },
+      { lat: 41.9, lng:  12.5, status: 'offline',      n: 8  },
+      { lat: 50.1, lng:   8.6, status: 'connected',    n: 19 },
+      { lat: 47.5, lng:  19.0, status: 'impaired',     n: 1, tail:'OE-IGA', inJam: true },
+      { lat: 59.5, lng:  24.7, status: 'connected',    n: 2  },
+      { lat: 43.5, lng:   5.4, status: 'connected',    n: 5  },
+      { lat: 44.5, lng:  33.5, status: 'disconnected', n: 1, tail:'N521RD', inJam: true },
+      { lat: 35.3, lng:  33.2, status: 'connected',    n: 1, tail:'TC-CEL', inJam: true },
+      { lat: 31.9, lng:  35.2, status: 'impaired',     n: 1, tail:'4X-CLM', inJam: true },
+      { lat: 37.0, lng:  37.0, status: 'offline',      n: 10 },
+      { lat: 25.3, lng:  55.4, status: 'offline',      n: 8  },
+      { lat: 24.4, lng:  54.4, status: 'connected',    n: 46 },
+      { lat: 35.7, lng: 139.7, status: 'offline',      n: 11 },
+      { lat: 22.3, lng: 114.1, status: 'connected',    n: 14 },
+      { lat:  1.3, lng: 103.8, status: 'offline',      n: 28 },
+      { lat: 13.1, lng:  80.2, status: 'offline',      n: 4  },
+      { lat:-23.5, lng: -46.6, status: 'offline',      n: 16 },
+      { lat:-34.6, lng: -58.4, status: 'offline',      n: 7  },
+      { lat: -1.3, lng:  36.8, status: 'offline',      n: 2  },
+    ];
+
+    const flightLyr = L.layerGroup().addTo(map);
+    let jamCount = 0;
+
+    AIRCRAFT.forEach(ac => {
+      const color = STATUS_COLOR[ac.status];
+      if (ac.inJam) jamCount++;
+      const isCluster = (ac.n || 0) > 1;
+      const countHtml = isCluster ? `<div class="ac-count">${ac.n}</div>` : '';
+      const borderStyle = ac.inJam ? 'border: 2.5px solid #ff9800;' : '';
+
+      const icon = L.divIcon({
+        html: `<div class="ac-wrap">
+          <div class="ac-bubble" style="background:${color};${borderStyle}">
+            <span class="material-icons">flight</span>
+          </div>
+          ${countHtml}
+        </div>`,
+        className: '', iconSize: [34, 34], iconAnchor: [17, 17]
+      });
+
+      const marker = L.marker([ac.lat, ac.lng], { icon }).addTo(flightLyr);
+
+      if (ac.tail) {
+        const s = ac.status.charAt(0).toUpperCase() + ac.status.slice(1);
+        const td = TAIL_DATA[ac.tail];
+        const dotColor = STATUS_COLOR[ac.status];
+        const jamFooter = ac.inJam
+          ? `<div class="acp-jam-footer">
+               <span class="material-icons acp-jam-icon">warning_amber</span>
+               GPS jamming zone
+             </div>` : '';
+        if (td) {
+          marker.bindTooltip(
+            `<div class="acp-header">
+               <span class="material-icons" style="font-size:15px;color:#757575;flex-shrink:0">satellite_alt</span>
+               ${td.band} · ${td.beam}
+             </div>
+             <div class="acp-tail-row">
+               <div class="acp-dot" style="background:${dotColor}"></div>
+               <span class="acp-tail">${td.serial}</span>
+               <span class="acp-sep">/</span>
+               <span class="acp-flight">${ac.tail}</span>
+               <span class="acp-status-txt">${s}</span>
+               <span class="material-icons acp-fly-icon">flight</span>
+             </div>
+             <div class="acp-info-block">
+               <div class="acp-info-row">
+                 <span class="material-icons acp-info-icon">radio_button_unchecked</span>
+                 <span class="acp-info-label">Flight Start</span>
+                 <span class="acp-info-val">${td.from}&nbsp;&nbsp;${td.dep}</span>
+               </div>
+               <div class="acp-info-row">
+                 <span class="material-icons acp-info-icon">radio_button_unchecked</span>
+                 <span class="acp-info-label">Flight End</span>
+                 <span class="acp-info-val">${td.to}&nbsp;&nbsp;${td.arr}</span>
+               </div>
+               <div class="acp-info-row">
+                 <span class="material-icons acp-info-icon">schedule</span>
+                 <span class="acp-info-label">Remaining</span>
+                 <span class="acp-info-val">${td.rem}</span>
+               </div>
+             </div>
+             ${jamFooter}`,
+            { direction: 'top', offset: [0, -20] }
+          );
+        } else {
+          marker.bindTooltip(
+            `<div style="padding:7px 11px">
+               <div style="font-size:13px;font-weight:600">${ac.tail}</div>
+               <div style="font-size:11px;color:#9e9e9e;margin-top:2px">${s}</div>
+             </div>`,
+            { direction: 'top', offset: [0, -20] }
+          );
+        }
+      }
+    });
+
+    // ── GPS warning chip ──────────────────────────────────────────────────────
+    const chip = document.getElementById('gps-chip');
+    const chipTxt = document.getElementById('gps-chip-text');
+    if (jamCount > 0) {
+      chip.classList.add('visible');
+      chipTxt.textContent = `${jamCount} aircraft in GPS jamming zones`;
+    }
+
+    // ── Layers panel ──────────────────────────────────────────────────────────
+    const layersPanel = document.getElementById('layers-panel');
+    const layersBtn   = document.getElementById('layers-btn');
+    const lpClose     = document.getElementById('lp-close');
+
+    layersBtn.addEventListener('click', () => {
+      const open = layersPanel.classList.toggle('open');
+      layersBtn.classList.toggle('active', open);
+    });
+    lpClose.addEventListener('click', () => {
+      layersPanel.classList.remove('open');
+      layersBtn.classList.remove('active');
+    });
+
+    // ── Overlay controls ──────────────────────────────────────────────────────
+    document.getElementById('overlay-toggle').addEventListener('change', function () {
+      overlayVisible = this.checked;
+      redraw();
+      if (!overlayVisible) closeSheet();
+      chip.classList.toggle('visible', overlayVisible && jamCount > 0);
+    });
+
+    document.getElementById('opacity-slider').addEventListener('input', function () {
+      overlayOpacity = this.value / 100;
+      document.getElementById('opacity-val').textContent = `${this.value}%`;
+      redraw();
+    });
+
+    const observer = new ResizeObserver(redraw);
+    observer.observe(document.getElementById('map'));
+  </script>
+</body>
+</html>

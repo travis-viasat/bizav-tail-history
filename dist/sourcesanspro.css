@@ -1,0 +1,80 @@
+/***
+ * Copyright (C) 2026 Viasat, Inc.
+ * All rights reserved.
+ * The information in this software is subject to change without notice and
+ * should not be construed as a commitment by Viasat, Inc.
+ *
+ * Viasat Proprietary
+ * The Proprietary Information provided herein is proprietary to Viasat and
+ * must be protected from further distribution and use. Disclosure to others,
+ * use or copying without express written authorization of Viasat, is strictly
+ * prohibited.
+ *
+ * Description: Source Sans Pro CSS File
+ */
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/fonts/source-sans/SourceSansPro-ExtraLight.otf') format('opentype');
+    font-weight: 100;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/fonts/source-sans/SourceSansPro-ExtraLight.otf') format('opentype');
+    font-weight: 200;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/fonts/source-sans/SourceSansPro-Light.otf') format('opentype');
+    font-weight: 300;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/fonts/source-sans/SourceSansPro-Regular.otf') format('opentype');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/fonts/source-sans/SourceSansPro-Regular.otf') format('opentype');
+    font-weight: 400;
+}
+
+/* There is not medium, so we will just stick with regular */
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/fonts/source-sans/SourceSansPro-Regular.otf') format('opentype');
+    font-weight: 500;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/fonts/source-sans/SourceSansPro-Semibold.otf') format('opentype');
+    font-weight: 600;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/fonts/source-sans/SourceSansPro-Bold.otf') format('opentype');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/fonts/source-sans/SourceSansPro-Bold.otf') format('opentype');
+    font-weight: 700;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/fonts/source-sans/SourceSansPro-Bold.otf') format('opentype');
+    font-weight: 800;
+}
+
+@font-face {
+    font-family: 'Source Sans Pro';
+    src: url('/fonts/source-sans/SourceSansPro-Black.otf') format('opentype');
+    font-weight: 900;
+}
