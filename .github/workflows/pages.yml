@@ -24,23 +24,18 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: tail-history/package-lock.json
 
       - name: Install dependencies
-        working-directory: tail-history
         run: npm ci
 
       - name: Build
-        working-directory: tail-history
-        # BUILD_BASE must match the sub-path where Pages serves this project.
-        # For a user/org repo it is typically /tail-history/ — adjust if needed.
         env:
-          BUILD_BASE: /tail-history/
+          BUILD_BASE: /bizav-tail-history/
         run: npm run build:pages
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: tail-history/dist
+          path: dist
 
   deploy:
     needs: build
