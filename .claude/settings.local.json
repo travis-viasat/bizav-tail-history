@@ -1,0 +1,51 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Skill(gsd:quick)",
+      "Skill(gsd:quick:*)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(find /Users/tyunis/Library/CloudStorage/OneDrive-Viasat,Inc/Documents/GitHub/ip-history-chart/src -type f | sort)",
+      "Read(//Users/tyunis/Library/CloudStorage/OneDrive-Viasat,Inc/Documents/GitHub/ip-history-chart/src/**)",
+      "Bash(ls /Users/tyunis/Library/CloudStorage/OneDrive-Viasat,Inc/Documents/GitHub/ip-history-chart/ | grep -E \"jest|tsconfig\")",
+      "Read(//Users/tyunis/Library/CloudStorage/OneDrive-Viasat,Inc/Documents/GitHub/ip-history-chart/**)",
+      "Bash(npx jest *)",
+      "Bash(pkill -f \"jest\")",
+      "Bash(npm audit *)",
+      "Bash(git commit -m ' *)",
+      "Bash(npx tsc *)",
+      "Bash(git add *)",
+      "Bash(curl -s http://localhost:5173 -o /dev/null -w \"%{http_code}\")",
+      "Bash(jobs)",
+      "Bash(curl -s http://localhost:3002 -o /dev/null -w \"%{http_code}\")",
+      "Bash(lsof -i :3000,3001,3002,5173 -sTCP:LISTEN)",
+      "Bash(lsof -i :4173 -sTCP:LISTEN)",
+      "Bash(lsof -Pan -i TCP -sTCP:LISTEN)",
+      "Bash(ps -p 18468 -o command=)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3002/review/ip-history)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3002/review/ip-history/1)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3002/review/ip-history/4)",
+      "Bash(chmod +x \"/Users/tyunis/Library/CloudStorage/OneDrive-Viasat,Inc/Documents/GitHub/tail-history/deploy-pages.sh\")",
+      "Bash(bash deploy-pages.sh)",
+      "Bash(git worktree *)",
+      "Bash(rm -rf \"/Users/tyunis/Library/CloudStorage/OneDrive-Viasat,Inc/Documents/GitHub/tail-history/dist/.git\")",
+      "Skill(figma:figma-generate-design)",
+      "Skill(figma:figma-generate-design:*)",
+      "Skill(figma:figma-use)",
+      "Skill(figma:figma-use:*)",
+      "mcp__figma__get_metadata",
+      "mcp__figma__generate_figma_design",
+      "Bash(echo \"Dev server PID: $!\")",
+      "mcp__figma__get_screenshot",
+      "mcp__figma__search_design_system",
+      "mcp__figma__use_figma",
+      "Skill(gsd:debug)",
+      "Skill(gsd:debug:*)"
+    ],
+    "additionalDirectories": [
+      "/Users/tyunis/Library/CloudStorage/OneDrive-Viasat,Inc/Documents/GitHub/tail-history/dist/.git"
+    ]
+  }
+}

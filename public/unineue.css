@@ -1,0 +1,81 @@
+/***
+ * Copyright (C) 2026 Viasat, Inc.
+ * All rights reserved.
+ * The information in this software is subject to change without notice and
+ * should not be construed as a commitment by Viasat, Inc.
+ *
+ * Viasat Proprietary
+ * The Proprietary Information provided herein is proprietary to Viasat and
+ * must be protected from further distribution and use. Disclosure to others,
+ * use or copying without express written authorization of Viasat, is strictly
+ * prohibited.
+ *
+ * Description: Uni Neue CSS File
+ */
+@font-face {
+    font-family: 'Uni Neue';
+    src: url('/fonts/uni-neue/unineue-thin.otf') format('opentype');
+    font-weight: 100;
+}
+
+@font-face {
+    font-family: 'Uni Neue';
+    src: url('/fonts/uni-neue/unineue-light.otf') format('opentype');
+    font-weight: 200;
+}
+
+@font-face {
+    font-family: 'Uni Neue';
+    src: url('/fonts/uni-neue/unineue-book.otf') format('opentype');
+    font-weight: 300;
+}
+
+@font-face {
+    font-family: 'Uni Neue';
+    src: url('/fonts/uni-neue/unineue-regular.otf') format('opentype');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'Uni Neue';
+    src: url('/fonts/uni-neue/unineue-regular.otf') format('opentype');
+    font-weight: 400;
+}
+
+/* There is not medium, so we will just stick with regular */
+@font-face {
+    font-family: 'Uni Neue';
+    src: url('/fonts/uni-neue/unineue-regular.otf') format('opentype');
+    font-weight: 500;
+}
+
+/* There is not semi-bold, so we are just going to go with bold */
+@font-face {
+    font-family: 'Uni Neue';
+    src: url('/fonts/uni-neue/unineue-bold.otf') format('opentype');
+    font-weight: 600;
+}
+
+@font-face {
+    font-family: 'Uni Neue';
+    src: url('/fonts/uni-neue/unineue-bold.otf') format('opentype');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'Uni Neue';
+    src: url('/fonts/uni-neue/unineue-bold.otf') format('opentype');
+    font-weight: 700;
+}
+
+@font-face {
+    font-family: 'Uni Neue';
+    src: url('/fonts/uni-neue/unineue-black.otf') format('opentype');
+    font-weight: 800;
+}
+
+@font-face {
+    font-family: 'Uni Neue';
+    src: url('/fonts/uni-neue/unineue-heavy.otf') format('opentype');
+    font-weight: 900;
+}
